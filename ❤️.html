@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>heart</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@1&family=Cormorant+Garamond:ital,wght@1,300;1,400&family=Outfit:wght@200;300;400&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:#04020a;min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    overflow:hidden;font-family:'Outfit',sans-serif;
+  }
+
+  #intro{
+    display:flex;flex-direction:column;align-items:center;gap:0;
+    transition:opacity .5s ease;z-index:2;
+    width:min(88vw,340px);
+  }
+  #intro.hide{opacity:0;pointer-events:none;}
+
+  .text-block{
+    text-align:center;margin-bottom:32px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .line1{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
+    font-size:clamp(28px,8vw,46px);color:#fff;
+    text-shadow:0 0 50px #ff6b9daa, 0 2px 20px #ff0a5444;
+    letter-spacing:.02em;
+  }
+  .line2{
+    font-size:clamp(11px,3vw,14px);font-weight:200;
+    color:#ffb3cb;letter-spacing:.12em;opacity:.75;
+  }
+
+  .countdown-wrap{
+    position:relative;width:110px;height:110px;
+    cursor:pointer;margin-top:8px;
+  }
+  .ring-svg{
+    position:absolute;inset:0;transform:rotate(-90deg);
+    width:110px;height:110px;
+  }
+  .ring-svg circle.track{fill:none;stroke:#2a0820;stroke-width:3;}
+  .ring-svg circle.progress{
+    fill:none;stroke:url(#ringGrad);stroke-width:3;
+    stroke-linecap:round;stroke-dasharray:283;stroke-dashoffset:0;
+    filter:drop-shadow(0 0 6px #ff6b9d88);
+  }
+  .count-heart{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  }
+  .count-heart svg{width:38px;height:38px;animation:icon-pulse 2s ease-in-out infinite;}
+  @keyframes icon-pulse{
+    0%,100%{transform:scale(1);filter:drop-shadow(0 0 6px #ff6b9d88);}
+    50%{transform:scale(1.12);filter:drop-shadow(0 0 14px #ff6b9dcc);}
+  }
+  .count-num{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
+    font-size:15px;color:#ffb3cb;letter-spacing:.05em;opacity:.9;line-height:1;
+  }
+
+  .spark{
+    position:absolute;border-radius:50%;pointer-events:none;
+    background:#ff6b9d;box-shadow:0 0 6px #ff6b9d;
+    animation:spark-float linear infinite;opacity:0;
+  }
+  @keyframes spark-float{
+    0%{transform:translateY(0) scale(1);opacity:0;}
+    15%{opacity:.6;}85%{opacity:.3;}
+    100%{transform:translateY(-120px) scale(0);opacity:0;}
+  }
+
+  #scene{position:fixed;inset:0;background:#000;display:none;z-index:10;}
+  #scene canvas{position:absolute;inset:0;width:100%;height:100%;}
+  #back{
+    position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+    color:#3a1020;font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    cursor:pointer;z-index:99;font-family:'Outfit',sans-serif;font-weight:300;
+    opacity:0;transition:opacity 1s ease 2s;
+  }
+  #back.show{opacity:1;}
+  #back:hover{color:#ff6b9d;}
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <div class="text-block">
+    <div class="line1">You Doing Great</div>
+    <div class="line2">I'm Cheering for You ❤️</div>
+  </div>
+
+  <div class="countdown-wrap" id="btn">
+    <svg class="ring-svg" viewBox="0 0 92 92">
+      <defs>
+        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#ff4d7e"/>
+          <stop offset="100%" stop-color="#ff8fab"/>
+        </linearGradient>
+      </defs>
+      <circle class="track" cx="46" cy="46" r="43"/>
+      <circle class="progress" id="ringProgress" cx="46" cy="46" r="43"/>
+    </svg>
+    <div class="count-heart">
+      <svg viewBox="0 0 32 29" fill="none">
+        <path d="M16 27S2 18 2 9.5A7.5 7.5 0 0 1 16 5.67 7.5 7.5 0 0 1 30 9.5C30 18 16 27 16 27Z"
+          fill="url(#hg)" stroke="#ff4d7e" stroke-width=".6"/>
+        <defs>
+          <radialGradient id="hg" cx="50%" cy="40%" r="65%">
+            <stop offset="0%" stop-color="#ff8fab"/>
+            <stop offset="60%" stop-color="#e84393"/>
+            <stop offset="100%" stop-color="#7b0a2e"/>
+          </radialGradient>
+        </defs>
+      </svg>
+      <div class="count-num" id="countNum">5</div>
+    </div>
+  </div>
+</div>
+
+<div id="scene">
+  <canvas id="c"></canvas>
+  <div id="back">✕ quay lại</div>
+</div>
+
+<script>
+// COUNTDOWN
+(function(){
+  const TOTAL=5000;
+  const ring=document.getElementById('ringProgress');
+  const numEl=document.getElementById('countNum');
+  const CIRCUMFERENCE=2*Math.PI*43;
+  ring.style.strokeDasharray=CIRCUMFERENCE;
+  ring.style.strokeDashoffset=0;
+  let t0=null,raf;
+  function tick(ts){
+    if(!t0)t0=ts;
+    const p=Math.min((ts-t0)/TOTAL,1);
+    ring.style.strokeDashoffset=CIRCUMFERENCE*p;
+    const r=Math.ceil((1-p)*5);
+    numEl.textContent=r>0?r:'♡';
+    if(p<1) raf=requestAnimationFrame(tick); else go();
+  }
+  raf=requestAnimationFrame(tick);
+  document.getElementById('btn').addEventListener('click',()=>{cancelAnimationFrame(raf);go();});
+  window._cancelCountdown=()=>cancelAnimationFrame(raf);
+})();
+
+// SPARKS
+(function(){
+  const card=document.getElementById('btn');
+  setInterval(()=>{
+    const s=document.createElement('div'); s.className='spark';
+    const size=2+Math.random()*3;
+    s.style.cssText=`width:${size}px;height:${size}px;left:${8+Math.random()*84}%;bottom:0;
+      animation-duration:${1.8+Math.random()*2}s;animation-delay:${Math.random()*.4}s;opacity:0;`;
+    card.appendChild(s); setTimeout(()=>s.remove(),4000);
+  },320);
+})();
+
+// HEART PARAMETRIC
+function heartXY(t){
+  const x=16*Math.pow(Math.sin(t),3);
+  const y=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t));
+  return[x,y];
+}
+
+// HEARTBEAT
+function heartbeatScale(phase){
+  const lub=Math.exp(-Math.pow((phase-0.08)/0.042,2))*0.052;
+  const dub=Math.exp(-Math.pow((phase-0.24)/0.058,2))*0.028;
+  return 1.0+lub+dub;
+}
+
+// PARTICLE
+class P{
+  constructor(tx,ty,tz,hue,sat,light,size,baseAlpha,delay,layer){
+    this.tx0=tx;this.ty0=ty;this.tz=tz;
+    this.hue=hue;this.sat=sat;this.light=light;
+    this.size0=size;this.base=baseAlpha;this.delay=delay;this.layer=layer;
+    const a=Math.random()*Math.PI*2,d=20+Math.random()*55;
+    this.x=tx+Math.cos(a)*d;this.y=ty+Math.sin(a)*d;
+    this.vx=0;this.vy=0;
+    this.alpha=0;this.off=Math.random()*Math.PI*2;this.alive=false;
+    this.tx=tx;this.ty=ty;this.size=size;this.depthAlpha=1;
+  }
+  project(beat,cx,cy){
+    const FOV=320;
+    const perspective=FOV/(FOV+(1-this.tz)*100);
+    this.tx=(this.tx0-cx)*beat*perspective+cx;
+    this.ty=(this.ty0-cy)*beat*perspective+cy;
+    this.size=this.size0*(0.5+perspective*0.65);
+    this.depthAlpha=0.45+this.tz*0.55;
+  }
+  update(frame,beat,cx,cy){
+    if(frame<this.delay)return;
+    this.alive=true;
+    this.project(beat,cx,cy);
+    const age=frame-this.delay;
+    const fadeIn=Math.min(1,age/50);
+    this.vx+=(this.tx-this.x)*0.08;
+    this.vy+=(this.ty-this.y)*0.08;
+    this.vx*=0.77;this.vy*=0.77;
+    this.x+=this.vx;this.y+=this.vy;
+    const shimmer=Math.sin(frame*0.038+this.off)*0.07;
+    this.alpha=this.base*fadeIn*this.depthAlpha+shimmer;
+  }
+  draw(ctx){
+    if(!this.alive||this.alpha<=0)return;
+    const a=Math.max(0,Math.min(1,this.alpha));
+    const l=this.light+this.tz*14;
+    const color=`hsl(${this.hue},${this.sat}%,${l}%)`;
+    const blur=this.layer===0?18+(1-this.tz)*14:this.layer===1?5+(1-this.tz)*5:2+(1-this.tz)*3;
+    ctx.globalAlpha=a;
+    ctx.shadowBlur=blur;
+    ctx.shadowColor=color;
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.arc(this.x,this.y,Math.max(0.3,this.size),0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+let particles=[],rafId,W2,H2,CX,CY;
+
+function depthOf(hx,hy){
+  const normY=(hy+17)/23;
+  const normX=(hx+16)/32;
+  return Math.max(0,Math.min(1,(1-normY)*0.70+(1-normX)*0.18+Math.random()*0.12));
+}
+
+function build(W,H){
+  particles=[];
+  CX=W/2; CY=H/2;
+  const sc=Math.min(W,H)*0.0225;
+
+  // OUTER HALO — blur mờ tỏa ra ngoài viền
+  for(let i=0;i<700;i++){
+    const t=Math.random()*Math.PI*2;
+    const[hx,hy]=heartXY(t);
+    const spread=1.08+Math.random()*0.55;
+    const tx=CX+hx*sc*spread+(Math.random()-.5)*sc*1.1;
+    const ty=CY+hy*sc*spread+(Math.random()-.5)*sc*1.1;
+    const tz=depthOf(hx,hy);
+    particles.push(new P(tx,ty,tz,332+(Math.random()-.5)*16,55+Math.random()*18,14+Math.random()*12+tz*8,2.5+Math.random()*6,0.07+Math.random()*0.14,Math.floor(Math.random()*35),0));
+  }
+
+  // TOÀN BỘ BỀ MẶT — r từ 0 đến 1, nhưng size/alpha phụ thuộc vào r
+  // r gần 1 (viền) → to, sáng = mặt trước phồng
+  // r gần 0 (giữa) → nhỏ, tối = mặt sau lõm
+  for(let i=0;i<3500;i++){
+    const t=Math.random()*Math.PI*2;
+    const[hx,hy]=heartXY(t);
+    // bias về viền nhưng vẫn có hạt ở giữa
+    const r=Math.pow(Math.random(),0.55);
+    const tx=CX+hx*sc*r+(Math.random()-.5)*sc*0.15;
+    const ty=CY+hy*sc*r+(Math.random()-.5)*sc*0.15;
+    const tz=depthOf(hx,hy);
+
+    // r càng lớn (viền) → size to, sáng, alpha cao
+    // r càng nhỏ (giữa) → size nhỏ, tối, alpha thấp
+    const edgeFactor=r; // 0=giữa, 1=viền
+    const size=0.4+edgeFactor*2.2+Math.random()*edgeFactor*1.2;
+    const light=10+edgeFactor*32+Math.random()*12;
+    const alpha=0.08+edgeFactor*0.45+Math.random()*0.15;
+
+    particles.push(new P(tx,ty,tz,337+(Math.random()-.5)*14,65+Math.random()*18,light,size,alpha,8+Math.floor(Math.random()*55),1));
+  }
+
+  // INNER FILL — hạt nhỏ tối rải đều ở giữa, vẫn có nhưng nhỏ xíu
+  for(let i=0;i<900;i++){
+    const t=Math.random()*Math.PI*2;
+    const r=Math.pow(Math.random(),0.5)*0.65;
+    const[hx,hy]=heartXY(t);
+    const tx=CX+hx*sc*r+(Math.random()-.5)*sc*0.10;
+    const ty=CY+hy*sc*r+(Math.random()-.5)*sc*0.10;
+    const tz=depthOf(hx,hy);
+    // nhỏ và tối — mặt sau của quả cầu
+    particles.push(new P(tx,ty,tz,334+(Math.random()-.5)*12,55+Math.random()*15,8+Math.random()*10,0.3+Math.random()*0.5,0.10+Math.random()*0.14,25+Math.floor(Math.random()*50),2));
+  }
+
+  particles.sort((a,b)=>a.tz-b.tz);
+}
+
+function go(){
+  if(typeof window._cancelCountdown==='function')window._cancelCountdown();
+  document.getElementById('intro').classList.add('hide');
+  setTimeout(()=>document.getElementById('intro').style.display='none',500);
+  const scene=document.getElementById('scene');
+  scene.style.display='block';
+  W2=window.innerWidth; H2=window.innerHeight;
+  const canvas=document.getElementById('c');
+  canvas.width=W2; canvas.height=H2;
+  const ctx=canvas.getContext('2d');
+  build(W2,H2);
+
+  const BPM=68,PERIOD=60/BPM;
+  let startTime=null,frame=0;
+
+  function loop(ts){
+    rafId=requestAnimationFrame(loop);
+    frame++;
+    if(!startTime)startTime=ts;
+    const elapsed=(ts-startTime)/1000;
+    let beat=1.0;
+    if(frame>75){
+      const phase=(elapsed%PERIOD)/PERIOD;
+      beat=heartbeatScale(phase);
+    }
+    ctx.clearRect(0,0,W2,H2);
+    ctx.shadowBlur=0;
+    particles.forEach(p=>{p.update(frame,beat,CX,CY);p.draw(ctx);});
+    ctx.globalAlpha=1;
+  }
+  loop(0);
+  document.getElementById('back').classList.add('show');
+}
+
+document.getElementById('back').addEventListener('click',()=>{
+  cancelAnimationFrame(rafId);
+  document.getElementById('scene').style.display='none';
+  document.getElementById('back').classList.remove('show');
+  location.reload();
+});
+</script>
+</body>
+</html>
